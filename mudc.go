@@ -54,38 +54,15 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		fmt.Printf("%v ", b[0])
+
+		if b[0] == 13 {
+			continue
+		}
+
 		_, err = conn.Write(b)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}
-
-	/*
-		var caller telnet.Caller = telnet.StandardCaller
-
-		//@TOOD: replace "example.net:5555" with address you want to connect to.
-		//telnet.DialToAndCall("coremud.org:4000", caller)
-		telnet.DialToAndCallTLS("coremud.org:4022", caller, &tls.Config{})
-	*/
-	/*
-		// connect to a socket
-		conn, err := net.Dial("tcp", "coremud.org:4000")
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		// send a string
-		fmt.Fprintf(conn, "Hello, world!\n")
-		// read the response
-		for {
-			status, err := bufio.NewReader(conn).ReadString('\n')
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			fmt.Println(status)
-		}
-	*/
 }
