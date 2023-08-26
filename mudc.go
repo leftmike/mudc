@@ -14,19 +14,20 @@ func main() {
 	forceTLS := flag.Bool("tls", false, "force TLS connection")
 	flag.Parse()
 
-	if len(flag.Args()) != 2 {
+	args := flag.Args()
+	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "Usage: mudc [options] <host> <port>")
 		os.Exit(1)
 	}
 
-	conn, err := telnet.DialToTLS(flag.Arg(0)+":"+flag.Arg(1), &tls.Config{})
+	conn, err := telnet.DialToTLS(args[0]+":"+args[1], &tls.Config{})
 	if err != nil {
 		if *forceTLS {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
-		conn, err = telnet.DialTo(flag.Arg(0) + ":" + flag.Arg(1))
+		conn, err = telnet.DialTo(args[0] + ":" + args[1])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
