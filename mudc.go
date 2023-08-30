@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	forceTLS = flag.Bool("tls", false, "force TLS connection")
+	wantTLS = flag.String("tls", "yes", "TLS connection: yes, no, force")
 )
 
 func usage() {
@@ -25,12 +25,20 @@ func usage() {
 func connect(addr string) net.Conn {
 	var err error
 	var conn net.Conn
-	conn, err = tls.Dial("tcp", addr, &tls.Config{})
-	if err != nil {
-		if *forceTLS {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+
+	if *wantTLS == "yes" || *wantTLS == "force" {
+		conn, err = tls.Dial("tcp", addr, &tls.Config{})
+		if err != nil {
+			if *wantTLS == "force" {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
+			conn = nil
 		}
+	}
+
+	if conn == nil {
 		conn, err = net.Dial("tcp", addr)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -80,18 +88,19 @@ func client(args []string) {
 	}
 }
 
-func copyBytes(dst io.Writer, src io.Reader, s string) {
+func copyBytes(dst io.Writer, src io.Reader) {
 	b := make([]byte, 1)
 	for {
 		_, err := src.Read(b)
-		if err == io.EOF {
-			break
-		} else if err != nil {
+		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			break
 		}
-		dst.Write(b)
-		//fmt.Printf("%s%d ", s, b[0])
+		_, err = dst.Write(b)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			break
+		}
 	}
 }
 
@@ -117,9 +126,11 @@ func proxy(args []string) {
 			os.Exit(1)
 		}
 
-		svr = telnet.NewConn(svr)
-		go copyBytes(svr, clnt, "c>s:")
-		go copyBytes(clnt, svr, "s>c:")
+		fmt.Println("Connection from", svr.RemoteAddr())
+
+		//svr = telnet.NewConn(svr)
+		go copyBytes(svr, clnt) // XXX: io.Copy?
+		go copyBytes(clnt, svr)
 	}
 }
 
