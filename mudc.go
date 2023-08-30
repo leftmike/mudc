@@ -5,9 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 
-	"github.com/reiver/go-telnet"
+	"github.com/leftmike/mudc/telnet"
 )
 
 func main() {
@@ -20,21 +21,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn, err := telnet.DialToTLS(args[0]+":"+args[1], &tls.Config{})
+	addr := args[0] + ":" + args[1]
+
+	var err error
+	var conn net.Conn
+	conn, err = tls.Dial("tcp", addr, &tls.Config{})
 	if err != nil {
 		if *forceTLS {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-
-		conn, err = telnet.DialTo(args[0] + ":" + args[1])
+		conn, err = net.Dial("tcp", addr)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}
 
-	go func(conn *telnet.Conn) {
+	conn = telnet.NewConn(conn)
+
+	go func(conn net.Conn) {
 		for {
 			b := make([]byte, 1)
 			_, err := conn.Read(b)
