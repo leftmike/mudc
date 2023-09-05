@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -27,49 +28,84 @@ var (
 )
 */
 
-func clientOutput(conn net.Conn) {
+type outputParser struct {
+	buf    bytes.Buffer
+	output []string
+	ansi   bool
+}
+
+func (op *outputParser) writeByte(b byte) {
+	if op.ansi {
+		if b == 'm' {
+			op.ansi = false
+		}
+		return
+	}
+
+	if b == 27 { // escape
+		op.ansi = true
+		return
+	}
+
+	if b != '\n' {
+		op.buf.WriteByte(b)
+		return
+	}
+
+	op.output = append(op.output, op.buf.String())
+	op.buf.Reset()
+
 	//var buf bytes.Buffer
 	//var output []string
 
-	b := make([]byte, 1)
+	/*
+		if b[0] == 10 {
+			if coremudRegex.Match(buf.Bytes()) {
+				fmt.Println("coremudRegex", buf.String())
+			} else if commRegex.Match(buf.Bytes()) {
+				fmt.Println("commRegex", buf.String())
+			} else {
+				output = append(output, buf.String())
+				//fmt.Println("$$", buf.String())
+			}
+
+			buf.Reset()
+		} else if promptRegex.Match(buf.Bytes()) {
+			//fmt.Println("promptRegex", buf.String())
+			if len(output) > 0 {
+				for _, s := range output {
+					fmt.Println("#", s)
+				}
+			}
+
+			output = nil
+		} else {
+			buf.Write(b)
+		}
+	*/
+}
+
+func clientOutput(conn net.Conn) {
+	var op outputParser
+	buf := make([]byte, 1)
+
 	for {
-		_, err := conn.Read(b)
+		_, err := conn.Read(buf)
 		if err == io.EOF {
 			os.Exit(0)
 		} else if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		fmt.Print(string(b))
+		fmt.Print(string(buf))
 
 		if outputTrace != nil {
-			outputTrace.Write(b)
+			outputTrace.Write(buf)
 		}
-		/*
-			if b[0] == 10 {
-				if coremudRegex.Match(buf.Bytes()) {
-					fmt.Println("coremudRegex", buf.String())
-				} else if commRegex.Match(buf.Bytes()) {
-					fmt.Println("commRegex", buf.String())
-				} else {
-					output = append(output, buf.String())
-					//fmt.Println("$$", buf.String())
-				}
 
-				buf.Reset()
-			} else if promptRegex.Match(buf.Bytes()) {
-				//fmt.Println("promptRegex", buf.String())
-				if len(output) > 0 {
-					for _, s := range output {
-						fmt.Println("#", s)
-					}
-				}
-
-				output = nil
-			} else {
-				buf.Write(b)
-			}
-		*/
+		for _, b := range buf {
+			op.writeByte(b)
+		}
 	}
 }
 
