@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/peterh/liner"
@@ -20,18 +22,17 @@ var (
 	outputTrace io.Writer
 )
 
-/*
 var (
 	promptRegex  = regexp.MustCompile(`^> `)
 	coremudRegex = regexp.MustCompile(`^\[CoreMUD\] `)
 	commRegex    = regexp.MustCompile(`^Comm [a-z]+: \[[a-zA-Z]+\]`)
 )
-*/
 
 type outputParser struct {
-	buf    bytes.Buffer
-	output []string
-	ansi   bool
+	buf      bytes.Buffer
+	output   []string
+	ansi     bool
+	outputFn func(s string)
 }
 
 func (op *outputParser) writeByte(b byte) {
@@ -52,37 +53,20 @@ func (op *outputParser) writeByte(b byte) {
 		return
 	}
 
-	op.output = append(op.output, op.buf.String())
+	buf := op.buf.Bytes()
+	if promptRegex.Match(buf) {
+		op.outputFn(strings.Join(op.output, "\n"))
+		op.output = op.output[:0]
+		buf = buf[2:] // XXX: take length of prompt into account
+	}
+
+	if coremudRegex.Match(buf) || commRegex.Match(buf) {
+		op.outputFn(string(buf))
+	} else {
+		op.output = append(op.output, string(buf))
+	}
+
 	op.buf.Reset()
-
-	//var buf bytes.Buffer
-	//var output []string
-
-	/*
-		if b[0] == 10 {
-			if coremudRegex.Match(buf.Bytes()) {
-				fmt.Println("coremudRegex", buf.String())
-			} else if commRegex.Match(buf.Bytes()) {
-				fmt.Println("commRegex", buf.String())
-			} else {
-				output = append(output, buf.String())
-				//fmt.Println("$$", buf.String())
-			}
-
-			buf.Reset()
-		} else if promptRegex.Match(buf.Bytes()) {
-			//fmt.Println("promptRegex", buf.String())
-			if len(output) > 0 {
-				for _, s := range output {
-					fmt.Println("#", s)
-				}
-			}
-
-			output = nil
-		} else {
-			buf.Write(b)
-		}
-	*/
 }
 
 func clientOutput(conn net.Conn) {
